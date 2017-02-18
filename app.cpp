@@ -1,5 +1,4 @@
 #include "app.h"
-#include "walk_through_id.h"
 #include "util.h"
 
 #include <thread>
@@ -35,50 +34,6 @@ Kinect::~Kinect()
 {
     // Finalize
     finalize();
-}
-
-// Processing
-void Kinect::run()
-{
-	WalkThroughId walk;
-	/*
-	const int devise_id = 1;
-	tstring strResult;
-
-	string origin;
-	if (DEVISE == 1){
-		origin = "C:\\Users\\Yu Mitsuhori\\Documents\\Visual Studio 2013\\Projects\\KinectApplication1\\KinectApplication1\\%s\\%2d";
-	}
-	else{
-		origin = "C:\\Users\\yu\\Documents\\Visual Studio 2013\\Projects\\KinectApplication2\\KinectApplication2\\%s\\%2d";
-	}
-	char dir[1000];
-	sprintf_s(dir, origin.c_str(), dir_name[WHO].c_str(), PROC_ID);
-	if (!_mkdir(dir)){
-		printf("フォルダ作成に成功しました。");
-	}
-	else{
-		printf("フォルダ作成に失敗しました。");
-	}
-	*/
-
-    // Main Loop
-    while( true ){
-        // Update Data
-        update();
-
-        // Draw Data
-        draw();
-
-        // Show Data
-        show();
-
-        // Key Check
-        const int key = cv::waitKey( 10 );
-        if( key == VK_ESCAPE ){
-            break;
-        }
-    }
 }
 
 // Initialize
@@ -205,7 +160,7 @@ void Kinect::finalize()
 }
 
 // Update Data
-void Kinect::update()
+void Kinect::update(array<Joint, JointType::JointType_Count>& joints)
 {
 	//Update Depth
 	updateDepth();
@@ -214,7 +169,7 @@ void Kinect::update()
     updateColor();
 
     // Update Body
-    updateBody();
+	updateBody(joints);
 }
 
 // Update Color
@@ -232,7 +187,7 @@ inline void Kinect::updateColor()
 }
 
 // Update Body
-inline void Kinect::updateBody()
+inline void Kinect::updateBody(array<Joint, JointType::JointType_Count>& joints)
 {
     // Retrieve Body Frame
     ComPtr<IBodyFrame> bodyFrame;
@@ -248,6 +203,27 @@ inline void Kinect::updateBody()
 
     // Retrieve Body Data
     ERROR_CHECK( bodyFrame->GetAndRefreshBodyData( static_cast<UINT>( bodies.size() ), &bodies[0] ) );
+	/*
+	int no_tracked_count = 0;
+    for (int index = 0; index < BODY_COUNT; index++){
+		    ComPtr<IBody> body = bodies[index];
+		    if (body == nullptr){
+			       continue;
+		    }
+		    BOOLEAN tracked = FALSE;
+	     	ERROR_CHECK(body->get_IsTracked(&tracked));
+		    if (!tracked){
+		   	    no_tracked_count++;
+			    continue;
+		    }
+		    else{
+			    ERROR_CHECK(body->GetJoints(static_cast<UINT>(joints.size()), &joints[0]));
+            break;
+        }
+	}*/
+	/*
+    bool isValidData = true;
+    if(no_tracked_count == BODY_COUNT) isValidData = false;*/
 }
 
 // Update Depth
