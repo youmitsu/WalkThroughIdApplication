@@ -17,6 +17,7 @@
 #include <direct.h>
 
 using namespace std;
+using namespace cv;
 
 typedef std::basic_string<TCHAR>		tstring;
 typedef std::basic_stringstream<TCHAR>	tstringstream;
@@ -55,17 +56,17 @@ void Kinect::run()
 	char dir[1000];
 	sprintf_s(dir, origin.c_str(), dir_name[WHO].c_str(), PROC_ID);
 	if (!_mkdir(dir)){
-		printf("ƒtƒHƒ‹ƒ_ì¬‚É¬Œ÷‚µ‚Ü‚µ‚½B");
+		printf("ï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ì¬ï¿½Éï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½ï¿½B");
 	}
 	else{
-		printf("ƒtƒHƒ‹ƒ_ì¬‚É¸”s‚µ‚Ü‚µ‚½B");
+		printf("ï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ì¬ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½ï¿½B");
 	}
 	*/
 
     // Main Loop
     while( true ){
         // Update Data
-        update();
+      //  update();
 
         // Draw Data
         draw();
@@ -205,7 +206,7 @@ void Kinect::finalize()
 }
 
 // Update Data
-void Kinect::update()
+void Kinect::update(array<Joint, JointType::JointType_Count>& joints)
 {
 	//Update Depth
 	updateDepth();
@@ -214,7 +215,7 @@ void Kinect::update()
     updateColor();
 
     // Update Body
-    updateBody();
+    updateBody(joints);
 }
 
 // Update Color
@@ -232,22 +233,40 @@ inline void Kinect::updateColor()
 }
 
 // Update Body
-inline void Kinect::updateBody()
+inline void Kinect::updateBody(array<Joint, JointType::JointType_Count>& joints)
 {
-    // Retrieve Body Frame
-    ComPtr<IBodyFrame> bodyFrame;
-    const HRESULT ret = bodyFrameReader->AcquireLatestFrame( &bodyFrame );
-    if( FAILED( ret ) ){
-        return;
-    }
+	// Retrieve Body Frame
+	ComPtr<IBodyFrame> bodyFrame;
+	const HRESULT ret = bodyFrameReader->AcquireLatestFrame(&bodyFrame);
+	if (FAILED(ret)){
+		return;
+	}
 
-    // Release Previous Bodies
-    for( auto& body : bodies ){
-        SafeRelease( body );
-    }
+	// Release Previous Bodies
+	for (auto& body : bodies){
+		SafeRelease(body);
+	}
 
-    // Retrieve Body Data
-    ERROR_CHECK( bodyFrame->GetAndRefreshBodyData( static_cast<UINT>( bodies.size() ), &bodies[0] ) );
+	// Retrieve Body Data
+	ERROR_CHECK(bodyFrame->GetAndRefreshBodyData(static_cast<UINT>(bodies.size()), &bodies[0]));
+
+	int no_tracked_count = 0;
+	for (int index = 0; index < BODY_COUNT; index++){
+		ComPtr<IBody> body = bodies[index];
+		if (body == nullptr){
+			continue;
+		}
+		BOOLEAN tracked = FALSE;
+		ERROR_CHECK(body->get_IsTracked(&tracked));
+		if (!tracked){
+			no_tracked_count++;
+			continue;
+		}
+		else{
+			ERROR_CHECK(body->GetJoints(static_cast<UINT>(joints.size()), &joints[0]));
+			break;
+		}
+	}
 }
 
 // Update Depth

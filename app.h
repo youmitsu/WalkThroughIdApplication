@@ -21,6 +21,8 @@
 #include <random>
 
 using namespace Microsoft::WRL;
+using namespace cv;
+using namespace std;
 
 typedef std::basic_string<TCHAR>		tstring;
 typedef std::basic_stringstream<TCHAR>	tstringstream;
@@ -68,6 +70,15 @@ public:
     // Processing
     void run();
 
+	// Update Data
+	void update(array<Joint, JointType::JointType_Count>& joints);
+
+	// Draw Data
+	void draw();
+
+	// Show Data
+	void show();
+
 private:
     // Initialize
     void initialize();
@@ -87,20 +98,14 @@ private:
     // Finalize
     void finalize();
 
-    // Update Data
-    void update();
-
     // Update Color
     inline void updateColor();
 
     // Update Body
-    inline void updateBody();
+	inline void updateBody(array<Joint, JointType::JointType_Count>& joints);
 
 	//Update Depth
 	inline void updateDepth();
-
-    // Draw Data
-    void draw();
 
     // Draw Color
     inline void drawColor();
@@ -116,9 +121,6 @@ private:
 
     // Draw Hand State
     inline void drawHandState( cv::Mat& image, const Joint& joint, HandState handState, TrackingConfidence handConfidence );
-
-    // Show Data
-    void show();
 
     // Show Body
     inline void showBody();
