@@ -206,7 +206,7 @@ void Kinect::finalize()
 }
 
 // Update Data
-void Kinect::update(array<Joint, JointType::JointType_Count>& joints)
+void Kinect::update(array<Joint, JointType::JointType_Count>& joints, bool& isValidData)
 {
 	//Update Depth
 	updateDepth();
@@ -215,7 +215,7 @@ void Kinect::update(array<Joint, JointType::JointType_Count>& joints)
     updateColor();
 
     // Update Body
-    updateBody(joints);
+    updateBody(joints, isValidData);
 }
 
 // Update Color
@@ -233,7 +233,7 @@ inline void Kinect::updateColor()
 }
 
 // Update Body
-inline void Kinect::updateBody(array<Joint, JointType::JointType_Count>& joints)
+inline void Kinect::updateBody(array<Joint, JointType::JointType_Count>& joints, bool& isValidData)
 {
 	// Retrieve Body Frame
 	ComPtr<IBodyFrame> bodyFrame;
@@ -267,6 +267,8 @@ inline void Kinect::updateBody(array<Joint, JointType::JointType_Count>& joints)
 			break;
 		}
 	}
+	isValidData = true;
+	if (no_tracked_count == BODY_COUNT) isValidData = false;
 }
 
 // Update Depth

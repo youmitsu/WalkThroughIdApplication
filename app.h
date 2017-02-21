@@ -71,7 +71,7 @@ public:
     void run();
 
 	// Update Data
-	void update(array<Joint, JointType::JointType_Count>& joints);
+	void update(array<Joint, JointType::JointType_Count>& joints, bool& isValidData);
 
 	// Draw Data
 	void draw();
@@ -102,7 +102,7 @@ private:
     inline void updateColor();
 
     // Update Body
-	inline void updateBody(array<Joint, JointType::JointType_Count>& joints);
+	inline void updateBody(array<Joint, JointType::JointType_Count>& joints, bool& isValidData);
 
 	//Update Depth
 	inline void updateDepth();

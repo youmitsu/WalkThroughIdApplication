@@ -16,14 +16,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	try{
 		Kinect kinect;
 		WalkThroughId identifier;
-		//kinect.run();
 		// Main Loop
 		while (true){
 			array<Joint, JointType::JointType_Count> joints;
+			bool isValidData;
 			// Update Data
-			kinect.update(joints);
-
+			kinect.update(joints, isValidData);
 			
+			identifier.execute(joints, isValidData);
 			// Draw Data
 			kinect.draw();
 
