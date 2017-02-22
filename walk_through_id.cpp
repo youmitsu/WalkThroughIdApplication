@@ -10,13 +10,23 @@
 #include <iostream>
 #include <fstream>
 
+#include "fftw3.h"
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 #define POS_RATE 1000
 #define FREQ_SIZE 12
 #define WALK_JOINT_COUNT 3
 #define WALK_VEC_SIZE FREQ_SIZE*WALK_JOINT_COUNT
-#define WALK_JUDGE_THRESH 0.6
+#define WALK_JUDGE_THRESH -1.0
+
+#define TRAIN_MEMBER 3
+#define TRAIN_DATA_SIZE 20
+#define DATA_SIZE TRAIN_MEMBER*TRAIN_DATA_SIZE 
+
+#pragma comment(lib, "libfftw3-3.lib")
+#pragma comment(lib, "libfftw3f-3.lib")
+#pragma comment(lib, "libfftw3l-3.lib")
 
 // Constructor
 WalkThroughId::WalkThroughId()
@@ -36,6 +46,7 @@ void WalkThroughId::initialize()
 {
 	frame_count = 0;
 	import_walk_judge_temp();
+	create_classifier();
     vector<vector<float>> features;
     dynamic_features = features;
     for(int i = 0; i < DYNAMIC_FEATURE_COUNT; i++){
@@ -48,12 +59,70 @@ void WalkThroughId::finalize(){
 
 }
 
+//分類器構築
+void WalkThroughId::create_classifier(){
+	float labels_data[DATA_SIZE];
+	for (int i = 0; i < TRAIN_MEMBER; i++){
+		for (int j = 0; j < TRAIN_DATA_SIZE; j++){
+			labels_data[i*TRAIN_DATA_SIZE + j] = (float)i;
+		}
+	}
+	Mat labels(DATA_SIZE, 1, CV_32FC1, labels_data);
+
+	float data[DATA_SIZE][DYNAMIC_FEATURE_COUNT];  //訓練データ保持の配列(あとでMatにぶちこむ)
+
+	const string input_dynamic_filename = "_output_features.dat";
+	const string person_names[TRAIN_MEMBER] = { "mitsuhori", "koyama", "hiroki" };
+
+	int d = 0;
+	for (int i = 0; i < TRAIN_MEMBER; i++){
+		string filename = person_names[i] + input_dynamic_filename;
+		ifstream input_file;
+		input_file.open(filename);
+		if (input_file.fail()){
+			cout << "ファイルが見つかりません." << endl;
+			cin.get();
+		}
+		string str;
+		int f = 0;  //特徴量番号
+		while (getline(input_file, str)){
+			string tmp;
+			istringstream stream(str);
+			int c = 0;
+			while (getline(stream, tmp, ' ')){
+				float val = stof(tmp);
+				data[d][f] = val;
+				f++;
+			}
+			//データ1セット読み終わったらリセット
+			if (f == FEATURE_SIZE){
+				f = 0;
+				d++;
+			}
+		}
+	}
+	Mat training_data(DATA_SIZE, FEATURE_SIZE, CV_32F, data);
+
+	/****************SVMパラメータの設定****************/
+	CvSVMParams params;
+	params.svm_type = SVM::C_SVC;
+	params.kernel_type = SVM::RBF;
+	params.C = 1.0;
+	params.degree = 1.2;
+	params.gamma = 0.0005;
+	params.coef0 = 1.0;
+
+	svm.train(training_data, labels, Mat(), Mat(), params);
+}
+
 void WalkThroughId::execute(array<Joint, JointType::JointType_Count>& joints, bool isValidData){
 	shift_count();
 	if (isValidData){
 		insert_features(joints);
 		if (walking_judge()){
-			cout << "true" << endl;
+			if (calc_spectrums()){
+				
+			}
 		}
 		else{
 			cout << "false" << endl;
@@ -63,6 +132,55 @@ void WalkThroughId::execute(array<Joint, JointType::JointType_Count>& joints, bo
 		insert_empty_features();
 	}
 	frame_count++;
+}
+
+bool WalkThroughId::calc_spectrums(){
+	int d = 0;
+	spectrums_input = Mat(1, FEATURE_SIZE, CV_32F);
+	for (int j = 0; j < DYNAMIC_FEATURE_COUNT; j++){
+		fftw_complex *in = NULL;
+		fftw_complex *out = NULL;
+		fftw_plan p = NULL;
+		int size = FREQ_SIZE;
+		size_t mem_size = sizeof(fftw_complex)* size;
+		in = (fftw_complex*)fftw_malloc(mem_size);
+		out = (fftw_complex*)fftw_malloc(mem_size);
+
+		if (!in || !out){
+			fprintf(stderr, "failed to allocate %d[byte] memory(-.-)\n", (int)mem_size);
+			return false;
+		}
+
+		p = fftw_plan_dft_1d(size, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+		for (int i = start_frame; i <= end_frame; i++){
+			in[i][0] = dynamic_features[j][i];
+			in[i][1] = 0;
+		}
+
+		fftw_execute(p);
+
+		// output is DC exchanged and scaled.
+		double scale = 1. / size;
+		double re, im, mag, ang;
+		for (int i = 0; i < size; i++){
+			re = out[i][0] * scale;
+			im = out[i][1] * scale;
+			mag = sqrt(re*re + im*im);
+			ang = atan2(im, re);
+			if (i == 1 || i == 2 | i == 3){
+				spectrums_input.at<float>(0, d) = mag;
+				d++;
+			}
+		}
+
+		if (p) fftw_destroy_plan(p);
+		if (in) fftw_free(in);
+		if (out) fftw_free(out);
+	}
+}
+
+void WalkThroughId::execute_classification(){
+	int result = (int)svm.predict(spectrums_input);
 }
 
 void WalkThroughId::shift_count(){

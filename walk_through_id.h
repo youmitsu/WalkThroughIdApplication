@@ -10,6 +10,7 @@ using namespace cv;
 #define ID_COUNT 9
 #define DYNAMIC_FEATURE_COUNT 6
 #define STATIC_FEATURE_COUNT 5
+#define FEATURE_SIZE DYNAMIC_FEATURE_COUNT*STATIC_FEATURE_COUNT
 
 enum member{
 	MITSUHORI = 1,
@@ -79,6 +80,9 @@ private:
   vector<float> walking_judge_temp;
   float temp_mean;
 
+  Mat spectrums_input;
+
+  CvSVM svm;
 public:
   //Constructor
   WalkThroughId();
@@ -92,6 +96,12 @@ public:
 
   void execute(array<Joint, JointType::JointType_Count>& joints, bool isValidData);
 
+  void create_classifier();
+
+  void execute_classification();
+
+  bool calc_spectrums();
+  
   void shift_count();
 
   bool walking_judge();
@@ -123,5 +133,4 @@ public:
   float evaluate_seperated_angle(Point3f pA, Point3f pB, Point3f pC, Point3f pD);
 
   float evaluate_dist(Point3f a, Point3f b);
-  
 };
